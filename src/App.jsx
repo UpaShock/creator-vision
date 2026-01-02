@@ -31,15 +31,10 @@ const firebaseConfig = {
   appId: "1:861262403958:web:be21b85218da0a2ddfc257"
 };
 
-// --- ERROR BOUNDARY (The White Screen Killer) ---
+// --- ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
   render() {
     if (this.state.hasError) {
       return (
@@ -47,9 +42,6 @@ class ErrorBoundary extends React.Component {
           <AlertTriangle size={48} className="mb-4 text-red-600 mx-auto" />
           <h1 className="text-xl font-bold mb-2">App Crash Detected</h1>
           <p className="mb-4 text-sm">We caught an error to prevent the white screen.</p>
-          <pre className="bg-white p-4 rounded border border-red-200 text-xs text-left overflow-auto max-w-full mb-6">
-            {this.state.error?.toString()}
-          </pre>
           <button 
             onClick={() => { localStorage.clear(); window.location.reload(); }}
             className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-bold"
@@ -84,13 +76,6 @@ const CATEGORY_CONFIG = {
   "Monetisation": { icon: DollarSign, colors: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "bg-amber-600" } }
 };
 
-const DEFAULT_VISION = {
-  "What": { description: "Message & Content", message: "", sections: [] },
-  "Who": { description: "Audience Avatar", sections: [] },
-  "Uniqueness": { description: "Authenticity", sections: [] },
-  "Monetisation": { description: "Ecosystem", sections: [] }
-};
-
 const STATUS_COLORS = {
   "Idea": { bg: "bg-neutral-100", text: "text-neutral-600" },
   "Scripting": { bg: "bg-yellow-50", text: "text-yellow-700" },
@@ -98,6 +83,104 @@ const STATUS_COLORS = {
   "Editing": { bg: "bg-purple-50", text: "text-purple-700" },
   "Posted": { bg: "bg-green-50", text: "text-green-700" }
 };
+
+const AVAILABLE_PLATFORMS = ["Instagram", "YouTube", "TikTok", "Newsletter"];
+
+// --- YOUR SPECIFIC DATA TEMPLATE ---
+const DEFAULT_VISION = {
+  "What": {
+    description: "Message & Content",
+    message: "Be brave enough to chase your dreams. Consistent action is the key to success and failures are just milestones towards bigger successes.",
+    sections: [
+      { 
+        title: "Content Pillars", 
+        items: [
+          "Performances (Tabla / Multi-instrument)", 
+          "Compositions (Film / Game Scores)", 
+          "Brand Lead Content", 
+          "Collaboration Posts", 
+          "Personal Story"
+        ] 
+      }
+    ]
+  },
+  "Who": {
+    description: "My Target Audience",
+    sections: [
+      { 
+        title: "Demographics", 
+        items: [
+          "18-40 year olds", 
+          "US & European Based", 
+          "Film Composers & Directors", 
+          "Music Producers & Supervisors",
+          "Brands seeking Musicians"
+        ] 
+      },
+      { 
+        title: "Psychographics", 
+        items: [
+          "Curious musicians", 
+          "Seekers of inspiration", 
+          "Directors looking for Composers", 
+          "Beginner Composers seeking tips"
+        ] 
+      }
+    ]
+  },
+  "Uniqueness": {
+    description: "My Truth & Authenticity",
+    sections: [
+      { 
+        title: "Experience", 
+        items: [
+          "Berklee Grad (Film/Media Scoring)", 
+          "Award-winning Film Composer", 
+          "Tabla Player (Global Styles)", 
+          "The Dentist Pivot (BDS Degree)"
+        ] 
+      },
+      { 
+        title: "Pains", 
+        items: [
+          "Integrating Academic Knowledge", 
+          "Maintaining Consistency", 
+          "Overcoming 'Lost Years' in Dentistry", 
+          "Funding Education"
+        ] 
+      },
+      { 
+        title: "Passion", 
+        items: [
+          "Service to the Planet", 
+          "Unity through Music", 
+          "Seeking Discomfort / Travel", 
+          "Rhythmic Storytelling"
+        ] 
+      },
+      { 
+        title: "Skills", 
+        items: [
+          "Film & Game Composition", 
+          "Orchestration & Arrangement", 
+          "Tabla Performance", 
+          "Music Production"
+        ] 
+      }
+    ]
+  },
+  "Monetisation": {
+    description: "My Ecosystem",
+    sections: [
+      { title: "One Offs", items: ["Brand Deals", "Commissions"] },
+      { title: "Ongoing", items: ["Tabla Course (Passive)", "Royalties"] },
+      { title: "High Value Partners", items: ["Spitfire Audio", "ROLI", "Bleeding Fingers", "East West", "iZotope", "Shure", "Telefunken", "AKG"] },
+      { title: "Reinvest", items: ["Cultural Travel", "Audio/Video Gear"] }
+    ]
+  }
+};
+
+const DEFAULT_CONTENT = []; // Started empty as requested
 
 // --- MAIN COMPONENT ---
 const Dashboard = () => {
@@ -142,6 +225,7 @@ const Dashboard = () => {
     const unsubVision = onSnapshot(visionRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        // Fallback merge to ensure structure
         setVision(prev => ({
           ...DEFAULT_VISION,
           ...data,
@@ -183,6 +267,17 @@ const Dashboard = () => {
     signOut(auth);
     setVision(DEFAULT_VISION);
     setContentItems([]);
+  };
+
+  // Reset Data to Template
+  const resetToTemplate = async () => {
+    if(!user) return;
+    if(window.confirm("⚠️ Reset Vision Board to defaults? This will erase custom categories.")) {
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'vision_board', 'main'), DEFAULT_VISION);
+        alert("Reset complete!");
+      } catch (e) { alert("Error resetting: " + e.message); }
+    }
   };
 
   const saveVision = async (newData) => {
@@ -269,6 +364,9 @@ const Dashboard = () => {
     return true;
   });
 
+  // Get dynamic pillars from "What" category
+  const dynamicPillars = vision.What?.sections?.flatMap(s => s.items) || [];
+
   // --- SCREENS ---
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-neutral-50">
@@ -290,47 +388,43 @@ const Dashboard = () => {
     </div>
   );
 
+  const CatIcon = CATEGORY_CONFIG[activeTab]?.icon || Type;
+  const catColor = CATEGORY_CONFIG[activeTab] || CATEGORY_CONFIG["What"];
+
   return (
-    <div className="flex h-screen bg-[#FDFDFD] text-neutral-800 font-sans overflow-hidden">
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-neutral-100 flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-8">
-          <h1 className="text-xl font-bold">Creator Vision</h1>
-          <div className="flex items-center gap-2 mt-2 text-[10px] uppercase font-bold text-emerald-600">
-            <Wifi size={10} /> Online
-          </div>
-          <div className="text-[10px] text-neutral-400 mt-1 truncate">{user.email}</div>
+    <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900 font-sans">
+      {/* Sidebar */}
+      <div className="w-16 md:w-64 bg-white border-r flex flex-col items-center md:items-stretch py-6 flex-shrink-0">
+        <div className="px-4 mb-8 hidden md:block">
+          <h1 className="font-bold text-lg">Creator Vision</h1>
+          <p className="text-xs text-green-600 flex items-center gap-1 mt-1"><Wifi size={10}/> Online</p>
         </div>
-        <div className="px-4 space-y-2 flex-1">
-          <button onClick={() => { setCurrentView('planner'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'planner' ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:bg-neutral-50'}`}>
-            <CalendarIcon size={16} /> Content Planner
+        
+        <div className="flex-1 space-y-2 px-2">
+          <button onClick={() => setView('planner')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'planner' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+            <CalendarIcon size={20} /> <span className="hidden md:block text-sm font-medium">Planner</span>
           </button>
-          <button onClick={() => { setCurrentView('vision'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'vision' ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:bg-neutral-50'}`}>
-            <Layout size={16} /> Vision Board
+          <button onClick={() => setView('vision')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'vision' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+            <Layout size={20} /> <span className="hidden md:block text-sm font-medium">Vision</span>
           </button>
         </div>
-        {currentView === 'vision' && (
-          <div className="p-4 border-t border-neutral-100 space-y-1">
-            <p className="px-2 text-[10px] font-bold text-neutral-400 uppercase">Categories</p>
-            {Object.keys(CATEGORY_CONFIG).map(k => (
-              <button key={k} onClick={() => { setActiveTab(k); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 text-sm rounded ${activeTab === k ? 'bg-neutral-100 font-medium' : 'text-neutral-500'}`}>{k}</button>
-            ))}
-          </div>
-        )}
-        <div className="p-4 border-t"><button onClick={handleLogout} className="flex items-center gap-2 text-xs text-red-500"><LogOut size={12} /> Sign Out</button></div>
-      </aside>
 
-      {/* MAIN */}
-      <main className="flex-1 overflow-y-auto relative bg-[#FAFAFA]">
-        <div className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-20">
-          <span className="font-bold">Creator Vision</span>
-          <button onClick={() => setShowMobileMenu(!showMobileMenu)}><Menu size={24} /></button>
+        <div className="p-2 border-t space-y-1">
+          <button onClick={resetToTemplate} className="p-3 w-full flex items-center justify-center md:justify-start gap-2 text-neutral-400 hover:bg-neutral-50 hover:text-black rounded-lg">
+            <RotateCcw size={18} /> <span className="hidden md:block text-xs font-bold uppercase">Reset Data</span>
+          </button>
+          <button onClick={handleLogout} className="p-3 w-full flex items-center justify-center md:justify-start gap-2 text-red-500 hover:bg-red-50 rounded-lg">
+            <LogOut size={18} /> <span className="hidden md:block text-xs font-bold uppercase">Sign Out</span>
+          </button>
         </div>
+      </div>
 
-        {currentView === 'planner' && (
-          <div className="max-w-5xl mx-auto px-6 py-8">
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        {view === 'planner' && (
+          <div className="p-6 md:p-12">
             <div className="flex justify-between items-end mb-6">
-              <h2 className="text-2xl font-bold">Content Planner</h2>
+              <h2 className="text-3xl font-bold">Content Planner</h2>
               <button onClick={() => { setEditingId(null); setNewItem({title:'', pillar:'', platforms:[], format:'Reel', status:'Idea', date:'', notes:''}); setIsFormOpen(true); }} className="bg-black text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"><Plus size={16}/> New</button>
             </div>
 
@@ -344,13 +438,27 @@ const Dashboard = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <select className="border p-2 rounded" value={newItem.pillar} onChange={e => setNewItem({...newItem, pillar: e.target.value})}>
                         <option value="">Select Pillar</option>
-                        {vision.What?.sections?.flatMap(s => s.items).map((i, idx) => <option key={idx} value={i}>{i}</option>)}
+                        {dynamicPillars.map((i, idx) => <option key={idx} value={i}>{i}</option>)}
                       </select>
                       <input type="date" className="border p-2 rounded" value={newItem.date} onChange={e => setNewItem({...newItem, date: e.target.value})} />
                     </div>
                     <select className="w-full border p-2 rounded" value={newItem.status} onChange={e => setNewItem({...newItem, status: e.target.value})}>
                       {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    <div className="flex flex-wrap gap-2">
+                        {AVAILABLE_PLATFORMS.map(p => {
+                          const isSelected = newItem.platforms.includes(p);
+                          return (
+                            <button key={p} type="button" 
+                              onClick={() => {
+                                if (isSelected) setNewItem({...newItem, platforms: newItem.platforms.filter(x => x !== p)});
+                                else setNewItem({...newItem, platforms: [...newItem.platforms, p]});
+                              }} 
+                              className={`px-2 py-1 text-xs border rounded ${isSelected ? 'bg-black text-white' : 'bg-white'}`}>{p}
+                            </button>
+                          );
+                        })}
+                    </div>
                     <textarea className="w-full border p-2 rounded h-20" placeholder="Notes" value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
                     <div className="flex gap-2 justify-end mt-4">
                       <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-sm text-neutral-500">Cancel</button>
@@ -372,9 +480,10 @@ const Dashboard = () => {
                   <div key={item.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 group">
                     <div>
                       <div className="font-medium text-sm">{item.title}</div>
-                      <div className="flex gap-2 mt-1">
+                      <div className="flex gap-2 mt-1 flex-wrap">
                         <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 rounded text-neutral-500">{item.pillar || 'No Pillar'}</span>
                         {item.date && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-mono">{item.date}</span>}
+                        {item.platforms?.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 border rounded">{p}</span>)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -390,12 +499,22 @@ const Dashboard = () => {
           </div>
         )}
 
-        {currentView === 'vision' && (
-          <div className="max-w-5xl mx-auto px-6 py-8">
-            <div className={`p-6 rounded-2xl mb-8 ${activeColor.bg} ${activeColor.text}`}>
-              <h2 className="text-3xl font-bold flex items-center gap-3">
-                {activeTab}
-              </h2>
+        {view === 'vision' && (
+          <div className="p-6 md:p-12">
+            {/* Tabs */}
+            <div className="flex overflow-x-auto gap-2 mb-8 pb-2">
+              {Object.keys(CATEGORY_CONFIG).map(cat => (
+                <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition ${activeTab === cat ? 'bg-black text-white shadow-lg' : 'bg-white text-gray-500 border'}`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className={`p-8 rounded-3xl mb-8 ${catColor.bg} ${catColor.color}`}>
+              <div className="flex items-center gap-3 mb-2">
+                <CatIcon size={24} />
+                <h2 className="text-2xl font-bold">{activeTab}</h2>
+              </div>
               <p className="opacity-80">{vision[activeTab]?.description}</p>
             </div>
 
@@ -405,48 +524,50 @@ const Dashboard = () => {
                 <div className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2">Core Message</div>
                 <textarea 
                   className="w-full bg-transparent text-xl font-serif resize-none focus:outline-none"
-                  rows={2}
+                  rows={3}
                   value={vision.What?.message || ""}
                   onChange={(e) => updateVisionField({ pillar: 'What', field: 'msg' }, e.target.value)}
                 />
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {vision[activeTab]?.sections?.map((sec, sIdx) => (
-                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
+            {/* Editable Sections */}
+            <div className="space-y-6">
+              {vision[activeTab]?.sections?.map((section, sIdx) => (
+                <div key={sIdx} className="bg-white p-6 rounded-2xl border shadow-sm group">
+                  <div className="flex justify-between items-center mb-4">
                     <input 
-                      className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none"
-                      value={sec.title}
-                      onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, field: 'secTitle' }, e.target.value)}
+                      value={section.title} 
+                      onChange={(e) => updateSection(sIdx, 'title', e.target.value)}
+                      className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none focus:ring-2 ring-blue-100 rounded px-1 w-full"
                     />
                     <button onClick={() => deleteVisionSection(sIdx)} className="text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
-                  <div className="space-y-2">
-                    {sec.items.map((item, idx) => (
-                      <div key={idx} className="flex gap-2 group">
-                        <div className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${activeColor.accent}`} />
+                  <div className="space-y-2 pl-4 border-l-2 border-gray-100">
+                    {section.items.map((item, iIdx) => (
+                      <div key={iIdx} className="flex gap-2">
                         <input 
-                          className="w-full text-sm text-neutral-600 focus:text-black bg-transparent focus:outline-none"
                           value={item}
-                          onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, idx, field: 'item' }, e.target.value)}
+                          onChange={(e) => updateItem(sIdx, iIdx, e.target.value)}
+                          className="w-full text-sm py-1 bg-transparent border-b border-transparent focus:border-gray-200 focus:outline-none"
                         />
-                        <button onClick={() => deleteVisionItem(sIdx, idx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-500"><X size={12} /></button>
+                        <button onClick={() => deleteItem(sIdx, iIdx)} className="text-gray-200 hover:text-red-500"><X size={14} /></button>
                       </div>
                     ))}
-                    <button onClick={() => addVisionItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
+                    <button onClick={() => addItem(sIdx)} className="text-xs font-bold text-gray-400 hover:text-black mt-2 flex items-center gap-1">
+                      <Plus size={12} /> Add Item
+                    </button>
                   </div>
                 </div>
               ))}
-              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
-                <Plus size={24} />
-                <span className="text-sm font-medium mt-2">Add Category</span>
+              
+              <button onClick={addSection} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:border-gray-400 hover:text-gray-600 transition font-medium text-sm flex items-center justify-center gap-2">
+                <Plus size={16} /> Add New Category
               </button>
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
