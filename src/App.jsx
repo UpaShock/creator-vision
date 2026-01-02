@@ -42,9 +42,6 @@ class ErrorBoundary extends React.Component {
           <AlertTriangle size={48} className="mb-4 text-red-600 mx-auto" />
           <h1 className="text-xl font-bold mb-2">App Crash Detected</h1>
           <p className="mb-4 text-sm">We caught an error to prevent the white screen.</p>
-          <pre className="bg-white p-4 rounded border border-red-200 text-xs text-left overflow-auto max-w-full mb-6">
-            {this.state.error?.toString()}
-          </pre>
           <button 
             onClick={() => { localStorage.clear(); window.location.reload(); }}
             className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-bold"
@@ -363,12 +360,11 @@ const Dashboard = () => {
     <div className="h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
       <h1 className="text-2xl font-bold mb-2">Creator Vision</h1>
       <button onClick={handleLogin} className="bg-black text-white px-6 py-3 rounded-xl flex gap-2 font-bold shadow-lg">
-        <Cloud /> Sign In
+        <Cloud /> Sign In with Google
       </button>
     </div>
   );
 
-  // FIXED: Define activeColor here, ensuring it always has a value
   const CatIcon = CATEGORY_CONFIG[activeTab]?.icon || Type;
   const activeColor = CATEGORY_CONFIG[activeTab]?.colors || CATEGORY_CONFIG["What"].colors;
 
@@ -465,11 +461,18 @@ const Dashboard = () => {
                   {[...Array(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay())].map((_, i) => <div key={`empty-${i}`} className="bg-white min-h-[80px]" />)}
                   {[...Array(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate())].map((_, i) => {
                     const day = i + 1;
+                    const todayDate = new Date();
+                    const isToday = day === todayDate.getDate() && currentDate.getMonth() === todayDate.getMonth() && currentDate.getFullYear() === todayDate.getFullYear();
+                    
                     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                     const items = contentItems.filter(c => c.date === dateStr);
                     return (
-                      <div key={day} onClick={() => handleDateClick(currentDate.getFullYear(), currentDate.getMonth(), day)} className="bg-white min-h-[80px] p-1 border-t hover:bg-blue-50 cursor-pointer group">
-                        <div className="text-xs text-gray-400 mb-1 group-hover:text-blue-500">{day}</div>
+                      <div 
+                        key={day} 
+                        onClick={() => handleDateClick(currentDate.getFullYear(), currentDate.getMonth(), day)} 
+                        className={`min-h-[80px] p-1 border-t cursor-pointer group ${isToday ? 'bg-blue-50 border-2 border-blue-500' : 'bg-white hover:bg-blue-50'}`}
+                      >
+                        <div className={`text-xs mb-1 ${isToday ? 'font-bold text-blue-700' : 'text-gray-400 group-hover:text-blue-500'}`}>{day}</div>
                         {items.map(it => <div key={it.id} className="text-[10px] bg-gray-100 rounded px-1 mb-1 truncate border-l-2 border-blue-500">{it.title}</div>)}
                       </div>
                     );
@@ -540,7 +543,7 @@ const Dashboard = () => {
             {/* Editable Sections */}
             <div className="space-y-6">
               {vision[activeTab]?.sections?.map((sec, sIdx) => (
-                <div key={sIdx} className="bg-white p-6 rounded-2xl border shadow-sm group">
+                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm group">
                   <div className="flex justify-between items-start mb-4">
                     <input 
                       className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none focus:ring-2 ring-blue-100 rounded px-1 w-full"
@@ -565,7 +568,8 @@ const Dashboard = () => {
                   </div>
                 </div>
               ))}
-              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              
+              <button onClick={addVisionSection} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
                 <Plus size={24} />
                 <span className="text-sm font-medium mt-2">Add Category</span>
               </button>
