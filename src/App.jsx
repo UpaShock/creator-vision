@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut, 
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
   onAuthStateChanged 
 } from 'firebase/auth';
 import { 
@@ -473,7 +473,12 @@ const Dashboard = () => {
                         className={`min-h-[80px] p-1 border-t cursor-pointer group ${isToday ? 'bg-blue-50 border-2 border-blue-500' : 'bg-white hover:bg-blue-50'}`}
                       >
                         <div className={`text-xs mb-1 ${isToday ? 'font-bold text-blue-700' : 'text-gray-400 group-hover:text-blue-500'}`}>{day}</div>
-                        {items.map(it => <div key={it.id} className="text-[10px] bg-gray-100 rounded px-1 mb-1 truncate border-l-2 border-blue-500">{it.title}</div>)}
+                        {items.map(it => (
+                          <div key={it.id} className="text-[10px] bg-gray-100 rounded p-1 mb-1 border-l-2 border-blue-500 overflow-hidden shadow-sm hover:bg-white transition-colors">
+                            <div className="font-bold truncate">{it.title}</div>
+                            {it.notes && <div className="text-gray-500 text-[9px] leading-tight line-clamp-2 mt-0.5">{it.notes}</div>}
+                          </div>
+                        ))}
                       </div>
                     );
                   })}
@@ -488,15 +493,21 @@ const Dashboard = () => {
               <div className="divide-y max-h-[400px] overflow-y-auto">
                 {filteredContent.map(item => (
                   <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50 group">
-                    <div>
+                    <div className="flex-1 min-w-0 mr-4">
                       <div className="font-medium text-sm">{item.title}</div>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">{item.pillar || 'No Pillar'}</span>
                         {item.date && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-mono">{item.date}</span>}
                         {item.platforms?.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 border rounded">{p}</span>)}
                       </div>
+                      {/* EXPANDED NOTES IN LIST */}
+                      {item.notes && (
+                        <div className="mt-2 text-xs text-gray-500 whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-100">
+                          {item.notes}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${STATUS_COLORS[item.status]?.bg} ${STATUS_COLORS[item.status]?.text}`}>{item.status}</span>
                       <button onClick={() => { setEditingId(item.id); setNewItem(item); setIsFormOpen(true); }} className="p-2 text-gray-300 hover:text-blue-500"><Edit2 size={14} /></button>
                       <button onClick={() => deleteContent(item.id)} className="p-2 text-gray-300 hover:text-red-500"><Trash2 size={14} /></button>
@@ -540,8 +551,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Editable Sections */}
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {vision[activeTab]?.sections?.map((sec, sIdx) => (
                 <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm group">
                   <div className="flex justify-between items-start mb-4">
@@ -568,8 +578,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               ))}
-              
-              <button onClick={addVisionSection} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
                 <Plus size={24} />
                 <span className="text-sm font-medium mt-2">Add Category</span>
               </button>
