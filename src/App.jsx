@@ -360,13 +360,7 @@ const Dashboard = () => {
     }
   };
 
-  // --- UI HELPERS ---
-  const openNewItemForm = () => {
-    setEditingId(null);
-    setNewItem({ title: "", pillar: "", platforms: [], format: "Reel", status: "Idea", date: "", notes: "" });
-    setIsFormOpen(true);
-  };
-
+  // UI Helpers
   const handleDateClick = (year, month, day) => {
     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setEditingId(null);
@@ -374,19 +368,9 @@ const Dashboard = () => {
     setIsFormOpen(true);
   };
 
-  const startEditing = (item, e) => {
-    if (e) e.stopPropagation();
-    setEditingId(item.id);
-    setNewItem({ ...item });
-    setIsFormOpen(true);
-  };
-
   const togglePlatform = (platform) => {
-    if (newItem.platforms.includes(platform)) {
-      setNewItem({ ...newItem, platforms: newItem.platforms.filter(p => p !== platform) });
-    } else {
-      setNewItem({ ...newItem, platforms: [...newItem.platforms, platform] });
-    }
+    if (newItem.platforms.includes(platform)) setNewItem({ ...newItem, platforms: newItem.platforms.filter(p => p !== platform) });
+    else setNewItem({ ...newItem, platforms: [...newItem.platforms, platform] });
   };
 
   const generateGCalLink = (item) => {
@@ -408,28 +392,19 @@ const Dashboard = () => {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${startString}/${endString}`;
   };
 
-  const filteredItems = contentItems.filter(item => {
-    if (listFilter === 'scheduled') return item.date && item.date !== "";
-    if (listFilter === 'backlog') return !item.date || item.date === "";
-    return true;
-  });
-
-  // --- RENDER HELPERS ---
-  const activeColor = CATEGORY_CONFIG[activeTab]?.colors || CATEGORY_CONFIG['What'].colors;
   const filteredContent = contentItems.filter(i => {
     if (listFilter === 'scheduled') return i.date;
     if (listFilter === 'backlog') return !i.date;
     return true;
   });
 
-  // Dynamic Pillars for Dropdown
   const pillars = vision.What?.sections?.find(s => s.title.includes("Pillars"))?.items || [];
 
-  // --- SCREENS ---
+  // Render Helpers
   if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-neutral-50">
-      <Loader2 className="animate-spin mb-4 text-neutral-400" size={40} />
-      <p className="font-mono text-sm text-neutral-500">{statusText}</p>
+    <div className="h-screen flex flex-col items-center justify-center bg-white">
+      <Loader2 className="animate-spin mb-4" />
+      <p className="text-sm text-gray-500">{statusText}</p>
     </div>
   );
 
@@ -451,14 +426,11 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900 font-sans">
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-neutral-100 flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-8">
-          <h1 className="text-xl font-bold">Creator Vision</h1>
-          <div className="flex items-center gap-2 mt-2 text-[10px] uppercase font-bold text-emerald-600">
-            <Wifi size={10} /> Online
-          </div>
-          <div className="text-[10px] text-neutral-400 mt-1 truncate">{user.email}</div>
+      {/* Sidebar */}
+      <div className="w-16 md:w-64 bg-white border-r flex flex-col items-center md:items-stretch py-6 flex-shrink-0">
+        <div className="px-4 mb-8 hidden md:block">
+          <h1 className="font-bold text-lg">Creator Vision</h1>
+          <p className="text-xs text-green-600 flex items-center gap-1 mt-1"><Wifi size={10}/> Online</p>
         </div>
         
         <div className="flex-1 space-y-2 px-2">
@@ -478,9 +450,9 @@ const Dashboard = () => {
             <LogOut size={18} /> <span className="hidden md:block text-xs font-bold uppercase">Sign Out</span>
           </button>
         </div>
-      </aside>
+      </div>
 
-      {/* MAIN CONTENT */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         {currentView === 'planner' && (
           <div className="p-6 md:p-12">
@@ -504,7 +476,7 @@ const Dashboard = () => {
                       <input type="date" className="border p-2 rounded" value={newItem.date} onChange={e => setNewItem({...newItem, date: e.target.value})} />
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {AVAILABLE_PLATFORMS.map(p => {
+                        {["Instagram", "YouTube", "TikTok", "Newsletter"].map(p => {
                           const isSelected = newItem.platforms.includes(p);
                           return (
                             <button key={p} type="button" 
@@ -604,6 +576,7 @@ const Dashboard = () => {
               <p className="opacity-80">{vision[activeTab]?.description}</p>
             </div>
 
+            {/* MESSAGE BOX */}
             {activeTab === 'What' && (
               <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${activeColor.border}`}>
                 <div className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2">Core Message</div>
@@ -616,34 +589,35 @@ const Dashboard = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {vision[activeTab]?.sections?.map((sec, sIdx) => (
-                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm">
+            {/* Editable Sections */}
+            <div className="space-y-6">
+              {vision[activeTab]?.sections?.map((section, sIdx) => (
+                <div key={sIdx} className="bg-white p-6 rounded-2xl border shadow-sm group">
                   <div className="flex justify-between items-start mb-4">
                     <input 
-                      className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none"
-                      value={sec.title}
-                      onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, field: 'secTitle' }, e.target.value)}
+                      className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none focus:ring-2 ring-blue-100 rounded px-1 w-full"
+                      value={section.title}
+                      onChange={(e) => updateSection(sIdx, 'title', e.target.value)}
                     />
                     <button onClick={() => deleteVisionSection(sIdx)} className="text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
-                  <div className="space-y-2">
-                    {sec.items.map((item, idx) => (
-                      <div key={idx} className="flex gap-2 group">
-                        <div className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${activeColor.accent}`} />
+                  <div className="space-y-2 pl-4 border-l-2 border-gray-100">
+                    {section.items.map((item, iIdx) => (
+                      <div key={iIdx} className="flex gap-2">
                         <input 
-                          className="w-full text-sm text-neutral-600 focus:text-black bg-transparent focus:outline-none"
                           value={item}
-                          onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, idx, field: 'item' }, e.target.value)}
+                          onChange={(e) => updateItem(sIdx, iIdx, e.target.value)}
+                          className="w-full text-sm py-1 bg-transparent border-b border-transparent focus:border-gray-200 focus:outline-none"
                         />
-                        <button onClick={() => deleteVisionItem(sIdx, idx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-500"><X size={12} /></button>
+                        <button onClick={() => deleteItem(sIdx, iIdx)} className="text-gray-200 hover:text-red-500"><X size={14} /></button>
                       </div>
                     ))}
-                    <button onClick={() => addVisionItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
+                    <button onClick={() => addItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
                   </div>
                 </div>
               ))}
-              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              
+              <button onClick={addSection} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
                 <Plus size={24} />
                 <span className="text-sm font-medium mt-2">Add Category</span>
               </button>
