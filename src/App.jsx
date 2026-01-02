@@ -16,28 +16,12 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { 
-  Plus, 
-  Trash2, 
-  X, 
-  Type, 
-  User, 
-  Sparkles, 
-  DollarSign,
-  Menu,
-  Calendar as CalendarIcon,
-  Layout,
-  Edit2,
-  Save,
-  RotateCcw,
-  Cloud,
-  LogOut,
-  Loader2,
-  CloudOff,
-  Wifi,
-  RefreshCw
+  Plus, Trash2, X, Type, User, Sparkles, DollarSign, Menu, 
+  Calendar as CalendarIcon, Layout, Edit2, Save, RotateCcw, 
+  Cloud, LogOut, Loader2, CloudOff, Wifi, AlertTriangle
 } from 'lucide-react';
 
-// --- 1. YOUR FIREBASE CONFIGURATION ---
+// --- 1. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyDZvfdi7-3cm4loOEl6-TywQYQNzbNbPtI",
   authDomain: "creator-vision-app.firebaseapp.com",
@@ -47,590 +31,417 @@ const firebaseConfig = {
   appId: "1:861262403958:web:be21b85218da0a2ddfc257"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
+// --- ERROR BOUNDARY (The White Screen Killer) ---
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center p-8 bg-red-50 text-red-900 text-center">
+          <AlertTriangle size={48} className="mb-4 text-red-600 mx-auto" />
+          <h1 className="text-xl font-bold mb-2">App Crash Detected</h1>
+          <p className="mb-4 text-sm">We caught an error to prevent the white screen.</p>
+          <pre className="bg-white p-4 rounded border border-red-200 text-xs text-left overflow-auto max-w-full mb-6">
+            {this.state.error?.toString()}
+          </pre>
+          <button 
+            onClick={() => { localStorage.clear(); window.location.reload(); }}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-bold"
+          >
+            Reset App Data
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// --- INITIALIZE FIREBASE ---
+let app, auth, db, googleProvider;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  googleProvider = new GoogleAuthProvider();
+} catch (e) {
+  console.error("Firebase Init Error", e);
+}
 
 const appId = 'creator-vision-production'; 
 
-// --- CONSTANTS ---
+// --- DEFAULTS ---
 const CATEGORY_CONFIG = {
-  "What": { 
-    icon: Type, 
-    colors: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", accent: "bg-blue-600" }
-  },
-  "Who": { 
-    icon: User, 
-    colors: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-100", accent: "bg-violet-600" }
-  },
-  "Uniqueness": { 
-    icon: Sparkles, 
-    colors: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "bg-emerald-600" }
-  },
-  "Monetisation": { 
-    icon: DollarSign, 
-    colors: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "bg-amber-600" }
-  }
+  "What": { icon: Type, colors: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", accent: "bg-blue-600" } },
+  "Who": { icon: User, colors: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-100", accent: "bg-violet-600" } },
+  "Uniqueness": { icon: Sparkles, colors: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", accent: "bg-emerald-600" } },
+  "Monetisation": { icon: DollarSign, colors: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", accent: "bg-amber-600" } }
+};
+
+const DEFAULT_VISION = {
+  "What": { description: "Message & Content", message: "", sections: [] },
+  "Who": { description: "Audience Avatar", sections: [] },
+  "Uniqueness": { description: "Authenticity", sections: [] },
+  "Monetisation": { description: "Ecosystem", sections: [] }
 };
 
 const STATUS_COLORS = {
-  "Idea": { bg: "bg-neutral-100", text: "text-neutral-600", border: "border-neutral-200" },
-  "Scripting": { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
-  "Filming": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  "Editing": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
-  "Posted": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" }
+  "Idea": { bg: "bg-neutral-100", text: "text-neutral-600" },
+  "Scripting": { bg: "bg-yellow-50", text: "text-yellow-700" },
+  "Filming": { bg: "bg-blue-50", text: "text-blue-700" },
+  "Editing": { bg: "bg-purple-50", text: "text-purple-700" },
+  "Posted": { bg: "bg-green-50", text: "text-green-700" }
 };
 
-const AVAILABLE_PLATFORMS = ["Instagram", "YouTube", "TikTok", "Newsletter"];
-
-// DEFAULT TEMPLATE - Used to repair missing data
-const DEFAULT_VISION = {
-  "What": {
-    description: "My Message & Content Pillars",
-    message: "Audacity in the pursuit of dreams...",
-    sections: [
-      { title: "Content Pillars", items: ["Performances", "Compositions", "Brand-Led Content", "Collaboration Posts", "Personal Story"] }
-    ]
-  },
-  "Who": {
-    description: "My Audience Avatar",
-    sections: [
-      { title: "Demographics", items: ["18-40 years old", "US & Europe focus"] },
-      { title: "Psychographics", items: ["Curious musicians", "Inspiration seekers"] }
-    ]
-  },
-  "Uniqueness": {
-    description: "My Truth & Authenticity",
-    sections: [
-      { title: "Experience", items: ["Berklee Graduate", "Film Composer"] },
-      { title: "Pains", items: ["Academic vs. Creative Flow"] },
-      { title: "Passion", items: ["Meaningful storytelling"] },
-      { title: "Skills", items: ["Film/Game Scoring"] }
-    ]
-  },
-  "Monetisation": {
-    description: "My Ecosystem",
-    sections: [
-      { title: "One-Offs", items: ["Brand Deals"] },
-      { title: "Ongoing", items: ["Tabla Course"] },
-      { title: "Partners", items: ["Spitfire", "ROLI"] },
-      { title: "Reinvest", items: ["Travel", "Studio Gear"] }
-    ]
-  }
-};
-
-const App = () => {
-  // --- STATE ---
+// --- MAIN COMPONENT ---
+const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [vision, setVision] = useState(DEFAULT_VISION);
   const [contentItems, setContentItems] = useState([]);
   
-  // Load States
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [offlineMode, setOfflineMode] = useState(false);
-
+  // Loading State
+  const [loading, setLoading] = useState(true);
+  const [statusText, setStatusText] = useState("Initializing...");
+  
   // UI State
   const [currentView, setCurrentView] = useState("planner"); 
   const [activeTab, setActiveTab] = useState("What"); 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [listFilter, setListFilter] = useState("all"); 
-
-  // Form State
-  const [newItem, setNewItem] = useState({
-    title: "", pillar: "", platforms: [], format: "Reel", status: "Idea", date: "", notes: ""
-  });
-  const [editingId, setEditingId] = useState(null);
+  const [newItem, setNewItem] = useState({ title: "", pillar: "", platforms: [], format: "Reel", status: "Idea", date: "", notes: "" });
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  // --- 1. AUTHENTICATION ---
+  // 1. AUTH CHECK
   useEffect(() => {
+    setStatusText("Connecting to Google...");
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsAuthChecking(false);
+      if (currentUser) {
+        setUser(currentUser);
+        setStatusText("Loading your data...");
+      } else {
+        setLoading(false); 
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  // --- 2. DATA SYNC ---
+  // 2. DATA SYNC
   useEffect(() => {
     if (!user) return;
 
-    setIsLoadingData(true);
-
-    // 2a. Vision Board Listener
-    const visionDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'vision_board', 'main');
-    const unsubVision = onSnapshot(visionDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Safe Merge: If DB has empty object, fallback to default for that key
-        const mergedVision = {
-          What: data.What || DEFAULT_VISION.What,
-          Who: data.Who || DEFAULT_VISION.Who,
-          Uniqueness: data.Uniqueness || DEFAULT_VISION.Uniqueness,
-          Monetisation: data.Monetisation || DEFAULT_VISION.Monetisation
-        };
-        setVision(mergedVision);
+    // Vision Listener
+    const visionRef = doc(db, 'artifacts', appId, 'users', user.uid, 'vision_board', 'main');
+    const unsubVision = onSnapshot(visionRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setVision(prev => ({
+          ...DEFAULT_VISION,
+          ...data,
+          What: { ...DEFAULT_VISION.What, ...data.What },
+          Who: { ...DEFAULT_VISION.Who, ...data.Who },
+          Uniqueness: { ...DEFAULT_VISION.Uniqueness, ...data.Uniqueness },
+          Monetisation: { ...DEFAULT_VISION.Monetisation, ...data.Monetisation },
+        }));
       } else {
-        // Create default if missing
-        setDoc(visionDocRef, DEFAULT_VISION);
+        setDoc(visionRef, DEFAULT_VISION);
         setVision(DEFAULT_VISION);
       }
-      setIsLoadingData(false);
-    }, (error) => {
-      console.error("Vision Error:", error);
-      setOfflineMode(true);
-      setIsLoadingData(false);
+      setLoading(false);
+    }, (err) => {
+      console.error(err);
+      setStatusText("Offline / Error");
+      setLoading(false);
     });
 
-    // 2b. Content Planner Listener
-    const contentCollRef = collection(db, 'artifacts', appId, 'users', user.uid, 'content_planner');
-    const unsubContent = onSnapshot(contentCollRef, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      items.sort((a, b) => (b.id - a.id)); 
+    // Content Listener
+    const contentRef = collection(db, 'artifacts', appId, 'users', user.uid, 'content_planner');
+    const unsubContent = onSnapshot(contentRef, (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      items.sort((a, b) => (b.id || 0) - (a.id || 0));
       setContentItems(items);
-    }, (error) => {
-      console.error("Content Error:", error);
     });
 
-    return () => {
-      unsubVision();
-      unsubContent();
-    };
+    return () => { unsubVision(); unsubContent(); };
   }, [user]);
 
-  // --- HANDLERS ---
+  // --- ACTIONS ---
   const handleLogin = async () => {
-    setIsLoggingIn(true);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      alert("Login Error: " + error.message);
-    }
-    setIsLoggingIn(false);
+    } catch (e) { alert(e.message); }
   };
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    setUser(null);
+  const handleLogout = () => {
+    signOut(auth);
     setVision(DEFAULT_VISION);
     setContentItems([]);
   };
 
-  const saveVisionToCloud = async (newVisionData) => {
-    if (!user) return;
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'vision_board', 'main'), newVisionData);
-    } catch (e) {
-      console.error("Save failed", e);
+  const saveVision = async (newData) => {
+    setVision(newData); 
+    if(user) {
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'vision_board', 'main'), newData);
+      } catch(e) { console.error(e); }
     }
   };
 
-  const updateVision = (path, value) => {
-    const newVision = { ...vision };
-    const { pillar, sectionIdx, itemIdx, field } = path;
+  const updateVisionField = (path, val) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    const { pillar, sectionIdx, idx, field } = path;
     
-    // Safety checks
-    if (!newVision[pillar]) return;
-    if (!newVision[pillar].sections[sectionIdx]) return;
+    if(!v[pillar]) return;
+    if(!v[pillar].sections) v[pillar].sections = [];
 
-    if (field === 'message') newVision[pillar].message = value;
-    if (field === 'sectionTitle') newVision[pillar].sections[sectionIdx].title = value;
-    if (field === 'item') newVision[pillar].sections[sectionIdx].items[itemIdx] = value;
+    if(field === 'msg') v[pillar].message = val;
+    if(field === 'secTitle') v[pillar].sections[sectionIdx].title = val;
+    if(field === 'item') v[pillar].sections[sectionIdx].items[idx] = val;
     
-    setVision(newVision);
-    saveVisionToCloud(newVision);
+    saveVision(v);
   };
 
-  const addSection = () => {
-    const newVision = { ...vision };
-    if (!newVision[activeTab].sections) newVision[activeTab].sections = [];
-    newVision[activeTab].sections.push({ title: "New Category", items: ["New Item"] });
-    setVision(newVision);
-    saveVisionToCloud(newVision);
+  const addVisionItem = (secIdx) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    v[activeTab].sections[secIdx].items.push("New Item");
+    saveVision(v);
   };
 
-  const deleteSection = (sectionIdx) => {
-    const newVision = { ...vision };
-    newVision[activeTab].sections.splice(sectionIdx, 1);
-    setVision(newVision);
-    saveVisionToCloud(newVision);
+  const deleteVisionItem = (secIdx, idx) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    v[activeTab].sections[secIdx].items.splice(idx, 1);
+    saveVision(v);
   };
 
-  const addItem = (sectionIdx) => {
-    const newVision = { ...vision };
-    newVision[activeTab].sections[sectionIdx].items.push("New Entry");
-    setVision(newVision);
-    saveVisionToCloud(newVision);
+  const addVisionSection = () => {
+    const v = JSON.parse(JSON.stringify(vision));
+    if(!v[activeTab].sections) v[activeTab].sections = [];
+    v[activeTab].sections.push({ title: "New Category", items: [] });
+    saveVision(v);
   };
 
-  const deleteItem = (sectionIdx, itemIdx) => {
-    const newVision = { ...vision };
-    newVision[activeTab].sections[sectionIdx].items.splice(itemIdx, 1);
-    setVision(newVision);
-    saveVisionToCloud(newVision);
+  const deleteVisionSection = (idx) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    v[activeTab].sections.splice(idx, 1);
+    saveVision(v);
   };
 
-  // --- CONTENT HANDLERS ---
-  const handleSaveItem = async (e) => {
+  // Content Actions
+  const saveContent = async (e) => {
     e.preventDefault();
-    if (!newItem.title || !user) return;
-
-    const itemData = { ...newItem, updatedAt: new Date().toISOString() };
-
-    try {
-      if (editingId) {
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'content_planner', editingId), itemData, { merge: true });
-      } else {
-        const newId = String(Date.now());
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'content_planner', newId), itemData);
-      }
-      setIsFormOpen(false);
-    } catch (e) {
-      alert("Error saving item: " + e.message);
+    if(!newItem.title || !user) return;
+    
+    const data = { ...newItem, updatedAt: new Date().toISOString() };
+    const id = editingId || String(Date.now());
+    
+    // Optimistic Update
+    let newItems = [...contentItems];
+    if(editingId) {
+      newItems = newItems.map(i => i.id === id ? { ...data, id } : i);
+    } else {
+      newItems = [{ ...data, id }, ...newItems];
     }
+    setContentItems(newItems);
+    setIsFormOpen(false);
+
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'content_planner', id), data, { merge: true });
   };
 
-  const handleDeleteContent = async (id) => {
-    if (!user) return;
-    if (window.confirm("Delete this idea?")) {
+  const deleteContent = async (id) => {
+    if(window.confirm("Delete this item?")) {
+      setContentItems(contentItems.filter(i => i.id !== id));
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'content_planner', id));
     }
   };
 
-  const togglePlatform = (platform) => {
-    if (newItem.platforms.includes(platform)) {
-      setNewItem({ ...newItem, platforms: newItem.platforms.filter(p => p !== platform) });
-    } else {
-      setNewItem({ ...newItem, platforms: [...newItem.platforms, platform] });
-    }
-  };
-
-  const openNewItemForm = () => {
-    setEditingId(null);
-    setNewItem({ title: "", pillar: "", platforms: [], format: "Reel", status: "Idea", date: "", notes: "" });
-    setIsFormOpen(true);
-  };
-
-  const startEditing = (item, e) => {
-    if (e) e.stopPropagation();
-    setEditingId(item.id);
-    setNewItem({ ...item });
-    setIsFormOpen(true);
-  };
-
-  const handleDateClick = (year, month, day) => {
-    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setEditingId(null);
-    setNewItem({ title: "", pillar: "", platforms: [], format: "Reel", status: "Idea", date: dateString, notes: "" });
-    setIsFormOpen(true);
-  };
-
-  // --- SUB-COMPONENTS ---
-  const Editable = ({ value, onSave, className, isArea = false }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [localVal, setLocalVal] = useState(value);
-    useEffect(() => { setLocalVal(value); }, [value]);
-
-    if (isEditing) {
-      return isArea ? (
-        <textarea autoFocus className={`w-full bg-white/50 border border-neutral-300 rounded p-2 outline-none ${className}`} value={localVal} onChange={(e) => setLocalVal(e.target.value)} onBlur={() => { onSave(localVal); setIsEditing(false); }} />
-      ) : (
-        <input autoFocus className={`w-full bg-white/50 border border-neutral-300 rounded px-1 outline-none ${className}`} value={localVal} onChange={(e) => setLocalVal(e.target.value)} onBlur={() => { onSave(localVal); setIsEditing(false); }} onKeyDown={(e) => e.key === 'Enter' && (onSave(localVal), setIsEditing(false))} />
-      );
-    }
-    return <div onClick={() => setIsEditing(true)} className={`cursor-pointer hover:bg-black/5 rounded px-1 -mx-1 transition-colors ${className}`}>{value}</div>;
-  };
-
-  const Calendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const today = new Date();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay(); 
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
-    const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-    const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-
-    const getItemsForDay = (day) => {
-      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      return contentItems.filter(item => item.date === dateString);
-    };
-
-    return (
-      <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 mb-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-neutral-800 flex items-center gap-2"><CalendarIcon size={20} /> {monthNames[month]} {year}</h3>
-          <div className="flex gap-2">
-            <button onClick={prevMonth} className="p-2 hover:bg-neutral-100 rounded-full"><ChevronLeft size={20}/></button>
-            <button onClick={() => setCurrentDate(new Date())} className="text-xs font-bold text-neutral-500 px-3 py-2 rounded-lg hover:bg-neutral-100">Today</button>
-            <button onClick={nextMonth} className="p-2 hover:bg-neutral-100 rounded-full"><ChevronRight size={20}/></button>
-          </div>
-        </div>
-        <div className="grid grid-cols-7 gap-px bg-neutral-100 border border-neutral-100 rounded-lg overflow-hidden">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (<div key={d} className="bg-neutral-50 p-3 text-center text-xs font-bold text-neutral-400 uppercase">{d}</div>))}
-          {[...Array(firstDayOfMonth)].map((_, i) => <div key={`empty-${i}`} className="bg-white min-h-[100px] p-2" />)}
-          {[...Array(daysInMonth)].map((_, i) => {
-            const day = i + 1;
-            const dayItems = getItemsForDay(day);
-            const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-            return (
-              <div key={day} onClick={() => handleDateClick(year, month, day)} className={`min-h-[100px] p-2 transition-colors cursor-pointer group ${isToday ? 'bg-blue-50/50 ring-2 ring-blue-500 z-10' : 'bg-white hover:bg-neutral-50'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <div className={`text-sm font-medium ${isToday ? 'text-blue-700 font-bold' : 'text-neutral-400'}`}>{day}</div>
-                  <div className="opacity-0 group-hover:opacity-100 text-neutral-300"><Plus size={14} /></div>
-                </div>
-                <div className="space-y-1">
-                  {dayItems.map(item => {
-                    const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS["Idea"];
-                    return <div key={item.id} onClick={(e) => startEditing(item, e)} className={`text-[10px] p-1.5 rounded border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} truncate shadow-sm`}>• {item.title}</div>;
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const filteredItems = contentItems.filter(item => {
-    if (listFilter === 'scheduled') return item.date && item.date !== "";
-    if (listFilter === 'backlog') return !item.date || item.date === "";
+  // --- RENDER HELPERS ---
+  const activeColor = CATEGORY_CONFIG[activeTab]?.colors || CATEGORY_CONFIG['What'].colors;
+  const filteredContent = contentItems.filter(i => {
+    if (listFilter === 'scheduled') return i.date;
+    if (listFilter === 'backlog') return !i.date;
     return true;
   });
 
-  const CategoryIcon = CATEGORY_CONFIG[activeTab]?.icon || Type;
-  const categoryColor = CATEGORY_CONFIG[activeTab]?.colors || CATEGORY_CONFIG["What"].colors;
+  // --- SCREENS ---
+  if (loading) return (
+    <div className="h-screen flex flex-col items-center justify-center bg-neutral-50">
+      <Loader2 className="animate-spin mb-4 text-neutral-400" size={40} />
+      <p className="font-mono text-sm text-neutral-500">{statusText}</p>
+    </div>
+  );
 
-  // --- RENDER ---
-  if (isAuthChecking) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-neutral-300" size={32} /></div>;
-
-  if (!user) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#FAFAFA] p-6 text-center">
-        <div className="mb-8 p-4 bg-white rounded-2xl shadow-xl shadow-neutral-100">
-          <Sparkles className="w-12 h-12 text-blue-600 mb-2 mx-auto" />
-          <h1 className="text-2xl font-bold text-neutral-900">Creator Vision</h1>
-          <p className="text-neutral-500">Sync your strategy across devices.</p>
-        </div>
-        <button onClick={handleLogin} disabled={isLoggingIn} className="flex items-center gap-3 bg-neutral-900 text-white px-8 py-4 rounded-xl font-medium hover:bg-neutral-800 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg">
-          {isLoggingIn ? <Loader2 className="animate-spin" /> : <Cloud size={20} />} Sign in with Google
-        </button>
+  if (!user) return (
+    <div className="h-screen flex flex-col items-center justify-center p-6 bg-white text-center">
+      <div className="mb-8">
+        <Sparkles className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+        <h1 className="text-3xl font-bold">Creator Vision</h1>
+        <p className="text-neutral-500 mt-2">Sync your strategy.</p>
       </div>
-    );
-  }
+      <button onClick={handleLogin} className="bg-black text-white px-8 py-4 rounded-xl font-medium flex items-center gap-3 shadow-lg hover:scale-105 transition-transform">
+        <Cloud size={20} /> Sign In with Google
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] text-neutral-800 font-sans overflow-hidden">
       {/* SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-neutral-100 flex flex-col transform transition-transform duration-300 md:relative md:translate-x-0 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Creator Vision</h1>
-          <div className="flex items-center gap-2 mt-2">
-             <div className={`w-2 h-2 rounded-full animate-pulse ${offlineMode ? 'bg-red-500' : 'bg-emerald-500'}`} />
-             <p className={`text-xs font-medium tracking-wide uppercase ${offlineMode ? 'text-red-600' : 'text-emerald-600'}`}>{offlineMode ? "Offline" : "Synced"}</p>
+          <h1 className="text-xl font-bold">Creator Vision</h1>
+          <div className="flex items-center gap-2 mt-2 text-[10px] uppercase font-bold text-emerald-600">
+            <Wifi size={10} /> Online
           </div>
-          <div className="text-[10px] text-neutral-300 mt-1 truncate">{user.email}</div>
+          <div className="text-[10px] text-neutral-400 mt-1 truncate">{user.email}</div>
         </div>
-
-        <div className="px-4 space-y-6 flex-1">
-          <div>
-            <p className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Execution</p>
-            <button onClick={() => { setCurrentView('planner'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'planner' ? 'bg-neutral-900 text-white shadow-md' : 'text-neutral-500 hover:bg-neutral-50'}`}>
-              <CalendarIcon size={18} /> <span className="font-medium">Content Planner</span>
-            </button>
-          </div>
-          <div>
-            <p className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Strategy</p>
-            <button onClick={() => { setCurrentView('vision'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'vision' ? 'bg-neutral-900 text-white shadow-md' : 'text-neutral-500 hover:bg-neutral-50'}`}>
-              <Layout size={18} /> <span className="font-medium">Vision Board</span>
-            </button>
-          </div>
+        <div className="px-4 space-y-2 flex-1">
+          <button onClick={() => { setCurrentView('planner'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'planner' ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:bg-neutral-50'}`}>
+            <CalendarIcon size={16} /> Content Planner
+          </button>
+          <button onClick={() => { setCurrentView('vision'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'vision' ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:bg-neutral-50'}`}>
+            <Layout size={16} /> Vision Board
+          </button>
         </div>
-
         {currentView === 'vision' && (
-          <div className="p-4 border-t border-neutral-100 bg-neutral-50/50">
-            <p className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Categories</p>
-            <nav className="space-y-1">
-              {Object.keys(vision).map((key) => {
-                const Icon = CATEGORY_CONFIG[key].icon;
-                const colors = CATEGORY_CONFIG[key].colors;
-                return (
-                <button key={key} onClick={() => setActiveTab(key)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === key ? `${colors.text} bg-white shadow-sm font-semibold` : `text-neutral-500 hover:text-neutral-800`}`}>
-                  <div className={`scale-75 ${activeTab === key ? colors.text : "text-neutral-400"}`}><Icon className="w-5 h-5" /></div>
-                  <span>{key}</span>
-                </button>
-              )})}
-            </nav>
+          <div className="p-4 border-t border-neutral-100 space-y-1">
+            <p className="px-2 text-[10px] font-bold text-neutral-400 uppercase">Categories</p>
+            {Object.keys(CATEGORY_CONFIG).map(k => (
+              <button key={k} onClick={() => { setActiveTab(k); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 text-sm rounded ${activeTab === k ? 'bg-neutral-100 font-medium' : 'text-neutral-500'}`}>{k}</button>
+            ))}
           </div>
         )}
-
-        <div className="p-4 border-t border-neutral-100">
-           <button onClick={handleLogout} className="flex items-center gap-2 text-[10px] text-neutral-400 hover:text-red-500 transition-colors w-full px-4">
-             <LogOut size={12} /> Sign Out
-           </button>
-        </div>
+        <div className="p-4 border-t"><button onClick={handleLogout} className="flex items-center gap-2 text-xs text-red-500"><LogOut size={12} /> Sign Out</button></div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <main className="flex-1 overflow-y-auto relative bg-[#FAFAFA]">
-        <div className="md:hidden p-4 flex justify-between items-center bg-white border-b border-neutral-100 sticky top-0 z-20">
+        <div className="md:hidden p-4 flex justify-between items-center bg-white border-b sticky top-0 z-20">
           <span className="font-bold">Creator Vision</span>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)}><Menu size={24} /></button>
         </div>
 
         {currentView === 'planner' && (
-          <div className="max-w-6xl mx-auto px-6 py-6 md:px-12 flex flex-col gap-6">
-            <div className="flex justify-between items-end">
-              <div>
-                <h2 className="text-3xl font-bold text-neutral-900">Content Planner</h2>
-                <p className="text-neutral-500 mt-1">Schedule your genius.</p>
-              </div>
-              <button onClick={openNewItemForm} className="bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-lg shadow-neutral-900/20"><Plus size={16} /> New Idea</button>
+          <div className="max-w-5xl mx-auto px-6 py-8">
+            <div className="flex justify-between items-end mb-6">
+              <h2 className="text-2xl font-bold">Content Planner</h2>
+              <button onClick={() => { setEditingId(null); setNewItem({title:'', pillar:'', platforms:[], format:'Reel', status:'Idea', date:'', notes:''}); setIsFormOpen(true); }} className="bg-black text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"><Plus size={16}/> New</button>
             </div>
 
+            {/* FORM MODAL */}
             {isFormOpen && (
-              <div className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg">{editingId ? 'Edit Content' : 'Add New Content'}</h3>
-                    <button onClick={() => setIsFormOpen(false)} className="text-neutral-400 hover:text-neutral-900"><X size={20}/></button>
+              <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
+                  <h3 className="font-bold text-lg mb-4">{editingId ? 'Edit' : 'New'} Content</h3>
+                  <div className="space-y-3">
+                    <input className="w-full border p-2 rounded" placeholder="Title" value={newItem.title} onChange={e => setNewItem({...newItem, title: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <select className="border p-2 rounded" value={newItem.pillar} onChange={e => setNewItem({...newItem, pillar: e.target.value})}>
+                        <option value="">Select Pillar</option>
+                        {vision.What?.sections?.flatMap(s => s.items).map((i, idx) => <option key={idx} value={i}>{i}</option>)}
+                      </select>
+                      <input type="date" className="border p-2 rounded" value={newItem.date} onChange={e => setNewItem({...newItem, date: e.target.value})} />
+                    </div>
+                    <select className="w-full border p-2 rounded" value={newItem.status} onChange={e => setNewItem({...newItem, status: e.target.value})}>
+                      {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <textarea className="w-full border p-2 rounded h-20" placeholder="Notes" value={newItem.notes} onChange={e => setNewItem({...newItem, notes: e.target.value})} />
+                    <div className="flex gap-2 justify-end mt-4">
+                      <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-sm text-neutral-500">Cancel</button>
+                      <button onClick={saveContent} className="px-4 py-2 bg-black text-white rounded text-sm">Save</button>
+                    </div>
                   </div>
-                  <form onSubmit={handleSaveItem} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-1">Content Idea / Title</label>
-                      <input className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-neutral-200" value={newItem.title} onChange={(e) => setNewItem({...newItem, title: e.target.value})} autoFocus />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-1">Pillar</label>
-                      <select className="w-full bg-white border border-neutral-200 rounded-lg px-3 py-2 outline-none" value={newItem.pillar} onChange={(e) => setNewItem({...newItem, pillar: e.target.value})}>
-                        <option value="">Select Pillar...</option>
-                        {vision.What.sections[0].items.map((pillar, idx) => (<option key={idx} value={pillar}>{pillar}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-2">Platforms</label>
-                      <div className="flex flex-wrap gap-2">
-                        {AVAILABLE_PLATFORMS.map(p => {
-                          const isSelected = newItem.platforms.includes(p);
-                          return (
-                            <button key={p} type="button" onClick={() => togglePlatform(p)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${isSelected ? "bg-neutral-800 text-white border-neutral-800" : "bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400"}`}>{p}</button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-1">Status</label>
-                      <select className="w-full bg-white border border-neutral-200 rounded-lg px-3 py-2 outline-none" value={newItem.status} onChange={(e) => setNewItem({...newItem, status: e.target.value})}>
-                        {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-1">Date</label>
-                      <input type="date" className="w-full bg-white border border-neutral-200 rounded-lg px-3 py-2 outline-none" value={newItem.date} onChange={(e) => setNewItem({...newItem, date: e.target.value})} />
-                    </div>
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2">
-                       <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wide mb-1">Notes</label>
-                       <textarea className="w-full bg-white border border-neutral-200 rounded-lg px-3 py-2 outline-none h-10 focus:h-24 transition-all resize-none" value={newItem.notes} onChange={(e) => setNewItem({...newItem, notes: e.target.value})} />
-                    </div>
-                    <div className="flex items-end">
-                      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors shadow-md shadow-blue-600/20">{editingId ? 'Update' : 'Add'}</button>
-                    </div>
-                  </form>
                 </div>
               </div>
             )}
 
-            <div className="flex-none"><Calendar /></div>
-
-            <div className="h-[600px] flex flex-col bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden mb-8">
-              <div className="px-6 py-4 border-b border-neutral-100 bg-neutral-50 flex justify-between items-center sticky top-0 z-20">
-                <div className="flex gap-4">
-                   <button onClick={() => setListFilter('all')} className={`text-xs font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors ${listFilter === 'all' ? 'text-neutral-900 border-neutral-900' : 'text-neutral-400 border-transparent hover:text-neutral-600'}`}>All</button>
-                   <button onClick={() => setListFilter('scheduled')} className={`text-xs font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors ${listFilter === 'scheduled' ? 'text-blue-600 border-blue-600' : 'text-neutral-400 border-transparent hover:text-neutral-600'}`}>Scheduled</button>
-                   <button onClick={() => setListFilter('backlog')} className={`text-xs font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors ${listFilter === 'backlog' ? 'text-purple-600 border-purple-600' : 'text-neutral-400 border-transparent hover:text-neutral-600'}`}>Backlog</button>
-                </div>
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <div className="flex border-b p-2 gap-2 bg-neutral-50">
+                {['all', 'scheduled', 'backlog'].map(f => (
+                  <button key={f} onClick={() => setListFilter(f)} className={`px-3 py-1 rounded text-xs font-bold uppercase ${listFilter === f ? 'bg-white shadow text-black' : 'text-neutral-400'}`}>{f}</button>
+                ))}
               </div>
-              <div className="flex-1 overflow-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-white shadow-sm">
-                    <tr className="border-b border-neutral-100 text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                      <th className="px-6 py-4 bg-neutral-50">Idea</th>
-                      <th className="px-6 py-4 bg-neutral-50">Pillar</th>
-                      <th className="px-6 py-4 bg-neutral-50">Notes</th>
-                      <th className="px-6 py-4 bg-neutral-50">Status</th>
-                      <th className="px-6 py-4 bg-neutral-50">Date</th>
-                      <th className="px-6 py-4 text-right bg-neutral-50">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {filteredItems.length > 0 ? filteredItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-neutral-50/50 transition-colors group">
-                        <td className="px-6 py-4 font-medium text-neutral-800">{item.title}
-                          <div className="flex gap-1 mt-1 flex-wrap">{item.platforms.map(p => (<span key={p} className="text-[10px] bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-500 border border-neutral-200">{p}</span>))}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-neutral-500"><span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-medium border border-blue-100 whitespace-nowrap">{item.pillar}</span></td>
-                        <td className="px-6 py-4 text-sm text-neutral-500 max-w-[200px]"><div className="truncate" title={item.notes}>{item.notes || <span className="text-neutral-300 italic">--</span>}</div></td>
-                        <td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-full text-xs font-bold border border-transparent whitespace-nowrap ${STATUS_COLORS[item.status].bg} ${STATUS_COLORS[item.status].text}`}>{item.status}</span></td>
-                        <td className="px-6 py-4 text-sm text-neutral-500 font-mono whitespace-nowrap">{item.date ? item.date : <span className="text-neutral-300 text-xs italic">Unscheduled</span>}</td>
-                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                          <button onClick={() => startEditing(item)} className="text-neutral-300 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-full"><Edit2 size={16} /></button>
-                          <button onClick={() => handleDeleteContent(item.id)} className="text-neutral-300 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"><Trash2 size={16} /></button>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan="6" className="px-6 py-12 text-center text-neutral-400 italic">No items found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {filteredContent.map(item => (
+                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 group">
+                    <div>
+                      <div className="font-medium text-sm">{item.title}</div>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 rounded text-neutral-500">{item.pillar || 'No Pillar'}</span>
+                        {item.date && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-mono">{item.date}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${STATUS_COLORS[item.status]?.bg} ${STATUS_COLORS[item.status]?.text}`}>{item.status}</span>
+                      <button onClick={() => { setEditingId(item.id); setNewItem(item); setIsFormOpen(true); }} className="p-2 text-neutral-300 hover:text-blue-500"><Edit2 size={14} /></button>
+                      <button onClick={() => deleteContent(item.id)} className="p-2 text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+                {filteredContent.length === 0 && <div className="p-8 text-center text-neutral-400 text-sm">No items found.</div>}
               </div>
             </div>
           </div>
         )}
 
         {currentView === 'vision' && (
-          <div className="max-w-5xl mx-auto px-6 py-12 md:px-12 md:py-16 animate-in fade-in duration-500 overflow-y-auto h-full">
-            <header className="mb-10">
-              <div className={`inline-flex items-center justify-center p-3 rounded-2xl mb-6 ${categoryColor.bg} ${categoryColor.text}`}><CategoryIcon className="w-5 h-5" /></div>
-              <h2 className="text-4xl font-bold text-neutral-900 mb-2">{activeTab}</h2>
-              <p className="text-neutral-500 text-lg">{vision?.[activeTab]?.description || ""}</p>
-            </header>
+          <div className="max-w-5xl mx-auto px-6 py-8">
+            <div className={`p-6 rounded-2xl mb-8 ${activeColor.bg} ${activeColor.text}`}>
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                {activeTab}
+              </h2>
+              <p className="opacity-80">{vision[activeTab]?.description}</p>
+            </div>
 
-            {activeTab === "What" && (
-              <div className={`relative mb-12 p-8 rounded-3xl ${categoryColor.bg} border ${categoryColor.border}`}>
-                <div className={`absolute top-0 left-8 -translate-y-1/2 bg-white px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase border ${categoryColor.border} ${categoryColor.text} shadow-sm`}>Core Message</div>
-                <Editable isArea value={vision?.What?.message || ""} className="text-xl md:text-2xl font-serif italic text-neutral-800 leading-relaxed bg-transparent" onSave={(val) => updateVision({ pillar: 'What', field: 'message' }, val)} />
+            {/* MESSAGE BOX */}
+            {activeTab === 'What' && (
+              <div className={`mb-8 p-6 rounded-xl border-2 border-dashed ${activeColor.border}`}>
+                <div className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2">Core Message</div>
+                <textarea 
+                  className="w-full bg-transparent text-xl font-serif resize-none focus:outline-none"
+                  rows={2}
+                  value={vision.What?.message || ""}
+                  onChange={(e) => updateVisionField({ pillar: 'What', field: 'msg' }, e.target.value)}
+                />
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
-              {vision?.[activeTab]?.sections?.map((section, sIdx) => (
-                <div key={sIdx} className="group bg-white rounded-2xl p-6 border border-neutral-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg transition-all duration-300">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase ${categoryColor.bg} ${categoryColor.text}`}><Editable value={section.title} onSave={(val) => updateVision({ pillar: activeTab, sectionIdx: sIdx, field: 'sectionTitle' }, val)} /></div>
-                    <button onClick={() => deleteSection(sIdx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-400 transition-opacity p-1"><Trash2 size={14} /></button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {vision[activeTab]?.sections?.map((sec, sIdx) => (
+                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <input 
+                      className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none"
+                      value={sec.title}
+                      onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, field: 'secTitle' }, e.target.value)}
+                    />
+                    <button onClick={() => deleteVisionSection(sIdx)} className="text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
-                  <ul className="space-y-3">
-                    {section.items.map((item, iIdx) => (
-                      <li key={iIdx} className="flex items-start gap-3 group/item">
-                        <div className={`mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 ${categoryColor.accent}`} />
-                        <div className="flex-1"><Editable value={item} className="text-neutral-600 leading-relaxed text-sm hover:text-neutral-900" onSave={(val) => updateVision({ pillar: activeTab, sectionIdx: sIdx, itemIdx: iIdx, field: 'item' }, val)} /></div>
-                        <button onClick={() => deleteItem(sIdx, iIdx)} className="opacity-0 group-hover/item:opacity-100 text-neutral-200 hover:text-red-400 transition-opacity pt-1"><X size={12} /></button>
-                      </li>
+                  <div className="space-y-2">
+                    {sec.items.map((item, idx) => (
+                      <div key={idx} className="flex gap-2 group">
+                        <div className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${activeColor.accent}`} />
+                        <input 
+                          className="w-full text-sm text-neutral-600 focus:text-black bg-transparent focus:outline-none"
+                          value={item}
+                          onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, idx, field: 'item' }, e.target.value)}
+                        />
+                        <button onClick={() => deleteVisionItem(sIdx, idx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-500"><X size={12} /></button>
+                      </div>
                     ))}
-                  </ul>
-                  <button onClick={() => addItem(sIdx)} className={`mt-6 flex items-center gap-2 text-xs font-semibold ${categoryColor.text} opacity-60 hover:opacity-100 transition-opacity`}><Plus size={14} /> Add Item</button>
+                    <button onClick={() => addVisionItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
+                  </div>
                 </div>
               ))}
-              <button onClick={addSection} className="flex flex-col items-center justify-center gap-3 bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-neutral-300 hover:text-neutral-600 transition-all min-h-[200px]">
-                <div className="p-3 bg-white rounded-full shadow-sm"><Plus size={20} /></div>
-                <span className="font-medium text-sm">Add New Category</span>
+              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+                <Plus size={24} />
+                <span className="text-sm font-medium mt-2">Add Category</span>
               </button>
             </div>
           </div>
@@ -640,6 +451,8 @@ const App = () => {
   );
 };
 
-export default App;
+export default function AppWrapper() {
+  return <ErrorBoundary><Dashboard /></ErrorBoundary>;
+}
 
 
