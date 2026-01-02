@@ -198,7 +198,8 @@ const Dashboard = () => {
   const [statusText, setStatusText] = useState("Initializing...");
   
   // UI State
-  const [currentView, setCurrentView] = useState("planner"); 
+  // FIXED: Renamed currentView/setCurrentView to view/setView to match usage
+  const [view, setView] = useState("planner"); 
   const [activeTab, setActiveTab] = useState("What"); 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -428,16 +429,19 @@ const Dashboard = () => {
     <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900 font-sans">
       {/* Sidebar */}
       <div className="w-16 md:w-64 bg-white border-r flex flex-col items-center md:items-stretch py-6 flex-shrink-0">
-        <div className="px-4 mb-8 hidden md:block">
-          <h1 className="font-bold text-lg">Creator Vision</h1>
-          <p className="text-xs text-green-600 flex items-center gap-1 mt-1"><Wifi size={10}/> Online</p>
+        <div className="p-8">
+          <h1 className="text-xl font-bold">Creator Vision</h1>
+          <div className="flex items-center gap-2 mt-2 text-[10px] uppercase font-bold text-emerald-600">
+            <Wifi size={10} /> Online
+          </div>
+          <div className="text-[10px] text-neutral-400 mt-1 truncate">{user.email}</div>
         </div>
         
         <div className="flex-1 space-y-2 px-2">
-          <button onClick={() => { setCurrentView('planner'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'planner' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => setView('planner')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'planner' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
             <CalendarIcon size={20} /> <span className="hidden md:block text-sm font-medium">Planner</span>
           </button>
-          <button onClick={() => { setCurrentView('vision'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === 'vision' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => setView('vision')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'vision' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
             <Layout size={20} /> <span className="hidden md:block text-sm font-medium">Vision</span>
           </button>
         </div>
@@ -454,7 +458,7 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {currentView === 'planner' && (
+        {view === 'planner' && (
           <div className="p-6 md:p-12">
             <div className="flex justify-between items-end mb-6">
               <h2 className="text-3xl font-bold">Content Planner</h2>
@@ -591,33 +595,33 @@ const Dashboard = () => {
 
             {/* Editable Sections */}
             <div className="space-y-6">
-              {vision[activeTab]?.sections?.map((section, sIdx) => (
-                <div key={sIdx} className="bg-white p-6 rounded-2xl border shadow-sm group">
+              {vision[activeTab]?.sections?.map((sec, sIdx) => (
+                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm">
                   <div className="flex justify-between items-start mb-4">
                     <input 
                       className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none focus:ring-2 ring-blue-100 rounded px-1 w-full"
-                      value={section.title}
+                      value={sec.title}
                       onChange={(e) => updateSection(sIdx, 'title', e.target.value)}
                     />
                     <button onClick={() => deleteVisionSection(sIdx)} className="text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
-                  <div className="space-y-2 pl-4 border-l-2 border-gray-100">
-                    {section.items.map((item, iIdx) => (
-                      <div key={iIdx} className="flex gap-2">
+                  <div className="space-y-2">
+                    {sec.items.map((item, idx) => (
+                      <div key={idx} className="flex gap-2 group">
+                        <div className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${activeColor.accent}`} />
                         <input 
+                          className="w-full text-sm text-neutral-600 focus:text-black bg-transparent focus:outline-none"
                           value={item}
-                          onChange={(e) => updateItem(sIdx, iIdx, e.target.value)}
-                          className="w-full text-sm py-1 bg-transparent border-b border-transparent focus:border-gray-200 focus:outline-none"
+                          onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, idx, field: 'item' }, e.target.value)}
                         />
-                        <button onClick={() => deleteItem(sIdx, iIdx)} className="text-gray-200 hover:text-red-500"><X size={14} /></button>
+                        <button onClick={() => deleteVisionItem(sIdx, idx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-500"><X size={12} /></button>
                       </div>
                     ))}
-                    <button onClick={() => addItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
+                    <button onClick={() => addVisionItem(sIdx)} className="text-xs font-bold text-neutral-400 hover:text-black mt-2 flex items-center gap-1"><Plus size={12}/> Add Item</button>
                   </div>
                 </div>
               ))}
-              
-              <button onClick={addSection} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
+              <button onClick={addVisionSection} className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl text-neutral-400 hover:bg-neutral-50 hover:border-neutral-300 transition-all">
                 <Plus size={24} />
                 <span className="text-sm font-medium mt-2">Add Category</span>
               </button>
