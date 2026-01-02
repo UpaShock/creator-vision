@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
 import { 
@@ -33,13 +33,8 @@ const firebaseConfig = {
 
 // --- ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
   render() {
     if (this.state.hasError) {
       return (
@@ -97,92 +92,37 @@ const AVAILABLE_PLATFORMS = ["Instagram", "YouTube", "TikTok", "Newsletter"];
 const DEFAULT_VISION = {
   "What": {
     description: "Message & Content",
-    message: "Be brave enough to chase your dreams. Consistent action is the key to success and failures are just milestones towards bigger successes.",
+    message: "Be brave enough to chase your dreams...",
     sections: [
       { 
         title: "Content Pillars", 
-        items: [
-          "Performances (Tabla / Multi-instrument)", 
-          "Compositions (Film / Game Scores)", 
-          "Brand Lead Content", 
-          "Collaboration Posts", 
-          "Personal Story"
-        ] 
+        items: ["Performances", "Compositions", "Brand Lead Content", "Collaboration Posts", "Personal Story"] 
       }
     ]
   },
   "Who": {
     description: "My Target Audience",
     sections: [
-      { 
-        title: "Demographics", 
-        items: [
-          "18-40 year olds", 
-          "US & European Based", 
-          "Film Composers & Directors", 
-          "Music Producers & Supervisors",
-          "Brands seeking Musicians"
-        ] 
-      },
-      { 
-        title: "Psychographics", 
-        items: [
-          "Curious musicians", 
-          "Seekers of inspiration", 
-          "Directors looking for Composers", 
-          "Beginner Composers seeking tips"
-        ] 
-      }
+      { title: "Demographics", items: ["18-40 year olds", "US & Europe"] },
+      { title: "Psychographics", items: ["Curious musicians", "Seekers of inspiration"] }
     ]
   },
   "Uniqueness": {
     description: "My Truth & Authenticity",
     sections: [
-      { 
-        title: "Experience", 
-        items: [
-          "Berklee Grad (Film/Media Scoring)", 
-          "Award-winning Film Composer", 
-          "Tabla Player (Global Styles)", 
-          "The Dentist Pivot (BDS Degree)"
-        ] 
-      },
-      { 
-        title: "Pains", 
-        items: [
-          "Integrating Academic Knowledge", 
-          "Maintaining Consistency", 
-          "Overcoming 'Lost Years' in Dentistry", 
-          "Funding Education"
-        ] 
-      },
-      { 
-        title: "Passion", 
-        items: [
-          "Service to the Planet", 
-          "Unity through Music", 
-          "Seeking Discomfort / Travel", 
-          "Rhythmic Storytelling"
-        ] 
-      },
-      { 
-        title: "Skills", 
-        items: [
-          "Film & Game Composition", 
-          "Orchestration & Arrangement", 
-          "Tabla Performance", 
-          "Music Production"
-        ] 
-      }
+      { title: "Experience", items: ["Berklee Grad", "Film Composer", "Tabla Player", "Dentist Pivot"] },
+      { title: "Pains", items: ["Integrating Knowledge", "Consistency"] },
+      { title: "Passion", items: ["Service to Planet", "Unity through Music"] },
+      { title: "Skills", items: ["Composition", "Orchestration", "Tabla"] }
     ]
   },
   "Monetisation": {
     description: "My Ecosystem",
     sections: [
-      { title: "One Offs", items: ["Brand Deals", "Commissions"] },
-      { title: "Ongoing", items: ["Tabla Course (Passive)", "Royalties"] },
-      { title: "High Value Partners", items: ["Spitfire Audio", "ROLI", "Bleeding Fingers", "East West", "iZotope", "Shure", "Telefunken", "AKG"] },
-      { title: "Reinvest", items: ["Cultural Travel", "Audio/Video Gear"] }
+      { title: "One Offs", items: ["Brand Deals"] },
+      { title: "Ongoing", items: ["Tabla Course"] },
+      { title: "High Value Partners", items: ["Spitfire Audio", "ROLI"] },
+      { title: "Reinvest", items: ["Travel", "Gear"] }
     ]
   }
 };
@@ -198,7 +138,6 @@ const Dashboard = () => {
   const [statusText, setStatusText] = useState("Initializing...");
   
   // UI State
-  // FIXED: Renamed currentView/setCurrentView to view/setView to match usage
   const [view, setView] = useState("planner"); 
   const [activeTab, setActiveTab] = useState("What"); 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -263,9 +202,8 @@ const Dashboard = () => {
 
   // --- ACTIONS ---
   const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (e) { alert(e.message); }
+    try { await signInWithPopup(auth, googleProvider); } 
+    catch (e) { alert(e.message); }
   };
 
   const handleLogout = () => {
@@ -333,6 +271,19 @@ const Dashboard = () => {
     saveVision(v);
   };
 
+  const updateSection = (idx, key, val) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    if(!v[activeTab].sections) v[activeTab].sections = [];
+    v[activeTab].sections[idx][key] = val;
+    saveVision(v);
+  };
+
+  const updateItem = (secIdx, itemIdx, val) => {
+    const v = JSON.parse(JSON.stringify(vision));
+    v[activeTab].sections[secIdx].items[itemIdx] = val;
+    saveVision(v);
+  };
+
   // Content Actions
   const saveContent = async (e) => {
     e.preventDefault();
@@ -341,7 +292,6 @@ const Dashboard = () => {
     const data = { ...newItem, updatedAt: new Date().toISOString() };
     const id = editingId || String(Date.now());
     
-    // Optimistic Update
     let newItems = [...contentItems];
     if(editingId) {
       newItems = newItems.map(i => i.id === id ? { ...data, id } : i);
@@ -410,38 +360,32 @@ const Dashboard = () => {
   );
 
   if (!user) return (
-    <div className="h-screen flex flex-col items-center justify-center p-6 bg-white text-center">
-      <div className="mb-8">
-        <Sparkles className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-        <h1 className="text-3xl font-bold">Creator Vision</h1>
-        <p className="text-neutral-500 mt-2">Sync your strategy.</p>
-      </div>
-      <button onClick={handleLogin} className="bg-black text-white px-8 py-4 rounded-xl font-medium flex items-center gap-3 shadow-lg hover:scale-105 transition-transform">
-        <Cloud size={20} /> Sign In with Google
+    <div className="h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
+      <h1 className="text-2xl font-bold mb-2">Creator Vision</h1>
+      <button onClick={handleLogin} className="bg-black text-white px-6 py-3 rounded-xl flex gap-2 font-bold shadow-lg">
+        <Cloud /> Sign In
       </button>
     </div>
   );
 
+  // FIXED: Define activeColor here, ensuring it always has a value
   const CatIcon = CATEGORY_CONFIG[activeTab]?.icon || Type;
-  const catColor = CATEGORY_CONFIG[activeTab] || CATEGORY_CONFIG["What"];
+  const activeColor = CATEGORY_CONFIG[activeTab]?.colors || CATEGORY_CONFIG["What"].colors;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900 font-sans">
       {/* Sidebar */}
       <div className="w-16 md:w-64 bg-white border-r flex flex-col items-center md:items-stretch py-6 flex-shrink-0">
-        <div className="p-8">
-          <h1 className="text-xl font-bold">Creator Vision</h1>
-          <div className="flex items-center gap-2 mt-2 text-[10px] uppercase font-bold text-emerald-600">
-            <Wifi size={10} /> Online
-          </div>
-          <div className="text-[10px] text-neutral-400 mt-1 truncate">{user.email}</div>
+        <div className="px-4 mb-8 hidden md:block">
+          <h1 className="font-bold text-lg">Creator Vision</h1>
+          <p className="text-xs text-green-600 flex items-center gap-1 mt-1"><Wifi size={10}/> Online</p>
         </div>
         
         <div className="flex-1 space-y-2 px-2">
-          <button onClick={() => setView('planner')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'planner' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => { setView('planner'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === 'planner' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
             <CalendarIcon size={20} /> <span className="hidden md:block text-sm font-medium">Planner</span>
           </button>
-          <button onClick={() => setView('vision')} className={`p-3 rounded-xl flex items-center gap-3 w-full transition ${view === 'vision' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => { setView('vision'); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${view === 'vision' ? 'bg-black text-white' : 'hover:bg-gray-100 text-gray-500'}`}>
             <Layout size={20} /> <span className="hidden md:block text-sm font-medium">Vision</span>
           </button>
         </div>
@@ -572,7 +516,7 @@ const Dashboard = () => {
               ))}
             </div>
 
-            <div className={`p-8 rounded-3xl mb-8 ${catColor.bg} ${catColor.color}`}>
+            <div className={`p-8 rounded-3xl mb-8 ${activeColor.bg} ${activeColor.text}`}>
               <div className="flex items-center gap-3 mb-2">
                 <CatIcon size={24} />
                 <h2 className="text-2xl font-bold">{activeTab}</h2>
@@ -596,7 +540,7 @@ const Dashboard = () => {
             {/* Editable Sections */}
             <div className="space-y-6">
               {vision[activeTab]?.sections?.map((sec, sIdx) => (
-                <div key={sIdx} className="bg-white p-6 rounded-xl border shadow-sm">
+                <div key={sIdx} className="bg-white p-6 rounded-2xl border shadow-sm group">
                   <div className="flex justify-between items-start mb-4">
                     <input 
                       className="font-bold text-sm uppercase tracking-wide bg-transparent focus:outline-none focus:ring-2 ring-blue-100 rounded px-1 w-full"
@@ -605,14 +549,14 @@ const Dashboard = () => {
                     />
                     <button onClick={() => deleteVisionSection(sIdx)} className="text-neutral-300 hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 pl-4 border-l-2 border-gray-100">
                     {sec.items.map((item, idx) => (
                       <div key={idx} className="flex gap-2 group">
                         <div className={`mt-2 w-1.5 h-1.5 rounded-full shrink-0 ${activeColor.accent}`} />
                         <input 
                           className="w-full text-sm text-neutral-600 focus:text-black bg-transparent focus:outline-none"
                           value={item}
-                          onChange={(e) => updateVisionField({ pillar: activeTab, sectionIdx: sIdx, idx, field: 'item' }, e.target.value)}
+                          onChange={(e) => updateItem(sIdx, idx, e.target.value)}
                         />
                         <button onClick={() => deleteVisionItem(sIdx, idx)} className="opacity-0 group-hover:opacity-100 text-neutral-300 hover:text-red-500"><X size={12} /></button>
                       </div>
